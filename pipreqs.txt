@@ -1,0 +1,4 @@
+pyaudio
+sys
+numpy
+aubio
