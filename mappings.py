@@ -1,3 +1,7 @@
+"""
+Example inputs for active window
+"""
+
 note_to_key = {
     36: 'a',  # C1
     37: 's',  # C#1

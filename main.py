@@ -1,10 +1,14 @@
 import pyaudio
 import sys
 import numpy as np
-import aubio
 from pynput.keyboard import Controller, Key
 import time
 import mappings
+import configs
+from aubio import sink
+import datetime
+
+DEBUG = False
 
 # Initialise pyaudio
 p = pyaudio.PyAudio()
@@ -20,22 +24,15 @@ stream = p.open(format=pyaudio_format,
                 input=True,
                 frames_per_buffer=buffer_size)
 
-# Record duration 
-if len(sys.argv) > 1:
-    record_duration = 5 
-    total_frames = 0
+if DEBUG:
+    now = datetime.datetime.now()
+    audio_sink = sink(str(now), samplerate)
 else:
-    record_duration = None
+    audio_sink = None
 
 # Setup pitch detection
-tolerance = 0.8
-win_s = 4096  # FFT size
-hop_s = buffer_size  # Hop size
-pitch_o = aubio.pitch("default", win_s, hop_s, samplerate)
-pitch_o.set_unit("midi")
-pitch_o.set_tolerance(tolerance)
+pitch_o = configs.create_pitch_detector()
 
-# Keyboard controller
 keyboard = Controller()
 
 def play_key(note):
@@ -45,7 +42,7 @@ def play_key(note):
         time.sleep(0.1)
         keyboard.release(key)
 
-print("*** starting recording")
+print("*** recording")
 while True:
     try:
         audiobuffer = stream.read(buffer_size)
@@ -54,20 +51,19 @@ while True:
         pitch = pitch_o(signal)[0]
         confidence = pitch_o.get_confidence()
 
-        if confidence > 0.8:  # Only consider notes with high confidence
+        if confidence > 0.8:
             midi_note = int(round(pitch))
             print(f"Detected note: {midi_note}")
-            play_key(midi_note)
+            play_key(midi_note) # ONLY APPLIES TO ACTIVE WINDOW
 
-        if record_duration:
-            total_frames += len(signal)
-            if record_duration * samplerate < total_frames:
-                break
+        if audio_sink:
+            audio_sink(signal, len(signal))
+
     except KeyboardInterrupt:
         print("*** Ctrl+C pressed, exiting")
         break
 
-print("*** done recording")
+print("*** stopped recording")
 stream.stop_stream()
 stream.close()
 p.terminate()
