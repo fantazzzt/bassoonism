@@ -46,7 +46,7 @@ print("*** recording")
 while True:
     try:
         audiobuffer = stream.read(buffer_size)
-        signal = np.fromstring(audiobuffer, dtype=np.float32)
+        signal = np.frombuffer(audiobuffer, dtype=np.float32)
 
         pitch = pitch_o(signal)[0]
         confidence = pitch_o.get_confidence()
