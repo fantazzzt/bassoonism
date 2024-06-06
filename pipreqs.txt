@@ -1,4 +1,4 @@
 pyaudio
-sys
 numpy
 aubio
+pynput

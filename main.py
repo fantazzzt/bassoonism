@@ -2,12 +2,14 @@ import pyaudio
 import sys
 import numpy as np
 import aubio
+from pynput.keyboard import Controller, Key
+import time
+import mappings
 
-
-# initialise pyaudio
+# Initialise pyaudio
 p = pyaudio.PyAudio()
 
-# open stream
+# Open stream
 buffer_size = 1024
 pyaudio_format = pyaudio.paFloat32
 n_channels = 1
@@ -18,24 +20,30 @@ stream = p.open(format=pyaudio_format,
                 input=True,
                 frames_per_buffer=buffer_size)
 
+# Record duration 
 if len(sys.argv) > 1:
-    # record 5 seconds
-    output_filename = sys.argv[1]
     record_duration = 5 
-    outputsink = aubio.sink(sys.argv[1], samplerate)
     total_frames = 0
 else:
-    # run forever
-    outputsink = None
     record_duration = None
 
-# setup pitch
+# Setup pitch detection
 tolerance = 0.8
-win_s = 4096 # fft size
-hop_s = buffer_size # hop size
+win_s = 4096  # FFT size
+hop_s = buffer_size  # Hop size
 pitch_o = aubio.pitch("default", win_s, hop_s, samplerate)
 pitch_o.set_unit("midi")
 pitch_o.set_tolerance(tolerance)
+
+# Keyboard controller
+keyboard = Controller()
+
+def play_key(note):
+    key = mappings.note_to_key.get(note, None)
+    if key:
+        keyboard.press(key)
+        time.sleep(0.1)
+        keyboard.release(key)
 
 print("*** starting recording")
 while True:
@@ -46,10 +54,10 @@ while True:
         pitch = pitch_o(signal)[0]
         confidence = pitch_o.get_confidence()
 
-        print("{} / {}".format(pitch,confidence))
-
-        if outputsink:
-            outputsink(signal, len(signal))
+        if confidence > 0.8:  # Only consider notes with high confidence
+            midi_note = int(round(pitch))
+            print(f"Detected note: {midi_note}")
+            play_key(midi_note)
 
         if record_duration:
             total_frames += len(signal)
